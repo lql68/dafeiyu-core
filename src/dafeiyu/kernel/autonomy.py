@@ -887,7 +887,7 @@ class IntentionStore:
 
     def list(self, status: Optional[str] = None, limit: int = 30) -> list:
         sql = ("SELECT id,kind,title,why,first_step,status,gate,risk,layer,"
-               "created_at FROM intentions")
+               "created_at,progress,last_reviewed_at FROM intentions")
         args: tuple = ()
         if status:
             sql += " WHERE status=?"
@@ -897,7 +897,7 @@ class IntentionStore:
         with self._connect() as c:
             rows = c.execute(sql, args).fetchall()
         cols = ["id", "kind", "title", "why", "first_step", "status", "gate",
-                "risk", "layer", "created_at"]
+                "risk", "layer", "created_at", "progress", "last_reviewed_at"]
         return [dict(zip(cols, r)) for r in rows]
 
     def count_since(self, ts: float) -> int:
