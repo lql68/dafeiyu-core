@@ -1,0 +1,30 @@
+# 虚拟环境
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# 测试与缓存
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# 运行产物：内核会往这里写 sqlite
+*.db
+*.db-wal
+*.db-shm
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# �ں˵����ܳ�������ʱ sqlite
+tmp*
