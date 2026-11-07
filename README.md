@@ -36,10 +36,39 @@ k.growth.configure(                                  # growth 的库路径，不
 
 ---
 
+## 环境要求
+
+| | |
+|---|---|
+| Python | **≥ 3.10**（CI 覆盖 3.10 / 3.11 / 3.12 / 3.13） |
+| 第三方依赖 | **零** —— 只用标准库（`json` / `sqlite3` / `math` / `datetime` / `hashlib` / `re`） |
+| AstrBot | **不需要**。它原本长在 AstrBot 插件里，抽出来之后不认识 AstrBot |
+| 模型 / API key | **不需要**。三个 example 全是本地算的，不调任何模型 |
+| 数据库 | **不需要**。example 自己在临时目录建空库，不碰你的数据 |
+
+`aiosqlite` / `httpx` 只在你要用 `school` 的异步落库、或者接真模型时才装：
+
+```bash
+pip install dafeiyu-core[asy]     # 只要异步落库
+pip install dafeiyu-core[llm,asy] # 要接真模型 + 异步落库
+```
+
+**clone 下来什么都不用装**，三个 example 都能直接跑：
+
+```bash
+git clone https://github.com/lql68/dafeiyu-core
+cd dafeiyu-core
+python examples/rhythm_demo.py
+```
+
+（每个 example 开头都有 `sys.path.insert(0, .../src)`，所以不用 `pip install` 也不用设 `PYTHONPATH`。）
+
+---
+
 ## 它现在能干什么
 
 ```bash
-pip install -e .
+pip install -e .          # 可选：想让别处 import 得到才需要
 python examples/rhythm_demo.py
 ```
 
