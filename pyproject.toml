@@ -17,7 +17,6 @@ keywords = ["llm", "agent", "personality", "emotion", "memory", "agency"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
-    "License :: OSI Approved :: MIT License",
 ]
 
 # 核心零外部依赖 —— 只用标准库（json / sqlite3 / math / datetime / hashlib / re）
