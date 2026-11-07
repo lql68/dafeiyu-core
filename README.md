@@ -1,5 +1,9 @@
 # dafeiyu-core
 
+[![test](https://github.com/lql68/dafeiyu-core/actions/workflows/test.yml/badge.svg)](https://github.com/lql68/dafeiyu-core/actions/workflows/test.yml)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![deps](https://img.shields.io/badge/dependencies-0-green.svg)](pyproject.toml)
+
 数字生命内核 —— 从 [dafeiyu-blueprint](https://github.com/lql68/dafeiyu-blueprint) 那套设计里抽出来的**能跑的部分**。
 
 **这不是一个聊天机器人框架。** 它不管你接 QQ 还是命令行，也不管你用什么模型。它只做一件事：
