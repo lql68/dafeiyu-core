@@ -36,16 +36,25 @@ python examples/rhythm_demo.py
 
 ---
 
-## 四块
+## 八块
 
 | 模块 | 一句话 | 依赖 |
 |---|---|---|
-| `rhythm` | 几点犯困、反应快慢、睡着了没有 | **纯数学**，无 DB |
-| `selfstory` | 自传章节 + 信念 + 证据 + 反证 + 衰减 | sqlite3 |
+| `rhythm` | 几点犯困、反应快慢、睡着了没有、睡到第几阶段 | **纯数学**，无 DB |
+| `selfstory` | 自传章节 + 信念 + 证据 + 反证 + 15 天衰减 | sqlite3 |
 | `selfmodel` | 「我现在觉得自己是个什么样的人」，按信念指纹变化重建 | sqlite3 |
+| `autonomy` | 意图 / 问题池 / 认知会话 / 观察记录 / 日记快照 | sqlite3 |
+| `growth` | 成长面板的九块只读聚合（不做任何写入） | sqlite3 |
+| `perm` | 五档权限 —— 她能不能改自己的代码 | json 文件 |
+| `school` | 技能学校 —— 从对话里攒「下次该怎么做」 | aiosqlite（可选） |
 | `tuning` | 不改代码调阈值 | json 文件 |
 
-**全部只用标准库。** `dependencies = []`，不装 httpx、不装 numpy、不连网。
+**七块零依赖**，全部标准库（`json / sqlite3 / math / datetime / hashlib / re`）。
+只有 `school` 真正落库时需要 `aiosqlite`（`pip install dafeiyu-core[asy]`）。
+
+```bash
+pytest        # 68 passed
+```
 
 ---
 
@@ -82,40 +91,87 @@ python examples/rhythm_demo.py
 src/dafeiyu/
 ├── __init__.py
 └── kernel/
-    ├── rhythm.py       187 行  生理节律
-    ├── selfstory.py    525 行  自传 + 信念
-    ├── selfmodel.py    151 行  自我模型
-    └── tuning.py        84 行  参数覆盖
-examples/rhythm_demo.py         不用 key 的演示
-tests/test_rhythm.py           22 个测试
+    ├── rhythm.py        188 行  生理节律
+    ├── selfstory.py     530 行  自传 + 信念
+    ├── selfmodel.py     145 行  自我模型
+    ├── autonomy.py     1250 行  意图 / 问题池 / 认知 / 观察
+    ├── growth.py        520 行  成长面板聚合
+    ├── perm.py          106 行  五档权限
+    ├── school.py        263 行  技能学校
+    └── tuning.py         84 行  参数覆盖
+examples/rhythm_demo.py          不用 key 的演示
+tests/                          68 个测试
 ```
+
+---
+
+## 带库的模块要先告诉它库在哪
+
+`selfstory` / `selfmodel` / `autonomy` / `school` 都在构造时给路径。
+`growth` 有五个库（autonomy / data_v4 / livingmemory / diary / vitals），用 `configure()` 一次注入：
+
+```python
+from dafeiyu import growth, selfstory
+
+growth.configure(
+    plugin_dir=r"D:\where\your\plugin_is",       # 它以此推 autonomy.db 和 diary/
+    data_db=r"D:\AstrBot\data\data_v4.db",       # 人设正文
+    lm_db=r"D:\AstrBot\data\plugin_data\...\livingmemory.db",
+)
+panel = growth.build()      # 九块字典，前端直接用
+
+story = selfstory.SelfStory(r"D:\where\your\plugin_is\autonomy.db")
+story.chapter("今天…")      # 写一章
+```
+
+**内核不假设自己躺在插件目录里** —— 这是从插件里搬出来时踩到的第一件事：`PLUGIN_DIR = os.path.dirname(__file__)` 在包里指向 `dafeiyu/kernel`，五个库全指错。
 
 ---
 
 ## 从 blueprint 搬过来时做的取舍
 
-原项目是 7254 行的 AstrBot 插件。这次只搬了 **947 行零框架依赖**的部分：
+原项目是 7254 行的 AstrBot 插件。这次搬了 **3086 行零框架依赖**的部分：
 
-| 搬了 | 没搬 |
+| 搬了 | 没搬（绑框架或绑服务） |
 |---|---|
-| `rhythm` / `selfstory` / `selfmodel` / `tuning` | `main.py`（3407 行，绑 AstrBot） |
-| | `actor.py`（756 行，绑 httpx + astrbot） |
-| | `autonomy.py`（1126 行，绑 aiosqlite + 线上库路径） |
-| | `school.py` / `persona_patch.py` / `growth.py` |
+| `rhythm` / `selfstory` / `selfmodel` / `tuning` | `main.py`（3407 行，绑 AstrBot 的 filter / provider / event） |
+| `autonomy` / `growth` / `perm` / `school` | `actor.py`（756 行，绑 httpx + astrbot logger） |
+| | `persona_patch.py`（绑 AstrBot 的 personas 表） |
 
-**为什么先搬这四个**：它们零改造就能跑，搬过来立刻有 22 个测试可跑。其余的要么绑框架，要么需要先设计 `Provider` / `Memory` 协议。
+---
+
+## 搬出来才暴露的三个真 bug
+
+这些在插件里都活着，只是没人建过干净库 / 没跑过边界值：
+
+**1. `autobiography` 表缺 `mood` 列**
+线上库是 `ALTER TABLE` 加的列，`_SCHEMA` 里没有。新库一调 `add_chapter(mood=...)` 就 `no such column: mood`。修法：schema 补齐 + `init()` 里 `PRAGMA table_info` 给老库 ALTER。
+
+**2. `arousal_proxy` 的软顶白做**
+```python
+if a > 0.85:
+    a = 0.85 + (a - 0.85) * 0.5    # 1.5 → 1.175
+return _clamp(a, 0.05, 1.0)        # 又被拉回 1.0
+```
+软顶是为了「别顶满」，clamp 上限 1.0 直接抵消。改成 0.95。
+
+**3. `record_cognition_answer` 无条件返回 `True`**
+```python
+c.execute("UPDATE ... WHERE id = ? AND IFNULL(answer,'') = ''")
+return True          # ← 已经答过的问题也说「记下了」
+```
+改成 `return cur.rowcount > 0`。
 
 ---
 
 ## 路线图
 
-- [x] 四个零依赖内核 + 测试
+- [x] 八个内核 + 68 个测试
+- [ ] 插件改成 `pip install -e` 依赖本包（单一源码，避免两边分叉）
 - [ ] `brain.py` —— 从 `main.py` 抽出 `_turn` / `_attribute` / `_emo_*` / `_belief_*` / `_cog_*` 约 1200 行业务逻辑
 - [ ] `provider.py` —— `Provider` 协议 + OpenAI 兼容实现 + `MockProvider`
 - [ ] `memory.py` —— 简化版记忆（sqlite + 2-gram 检索），替代第三方 livingmemory
 - [ ] `chat_cli.py` —— 命令行里跟她聊，30 秒看到情绪/信念
-
-重点是**单一源码**：将来插件反过来 `pip install -e` 依赖这个包，而不是复制一份，避免两边分叉。
 
 ---
 
