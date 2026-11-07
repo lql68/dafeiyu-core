@@ -8,6 +8,30 @@
 
 ---
 
+## ⚠️ 先看这里：装完必须 `configure()`
+
+内核**不假设自己躺在哪个目录里**。`perm` / `tuning` / `school` / `growth` 要知道文件写哪，
+而在 `pip install` 之后 `os.path.dirname(__file__)` 指向的是 **site-packages** ——
+不配的结果是：状态文件写进 site-packages、`growth` 每个 block 返回空（**不报错，只是空**）。
+
+```python
+from dafeiyu import kernel as k
+
+k.configure(state_dir=r"D:\my-bot\plugin")          # perm_mode.json / tuning.json 落这里
+
+k.growth.configure(                                  # growth 的库路径，不配就是全空
+    plugin_dir=r"D:\my-bot\plugin",
+    auto_db=r"D:\my-bot\plugin\autonomy.db",
+    data_db=r"D:\my-bot\data\data_v4.db",
+    lm_db=r"D:\my-bot\data\plugin_data\astrbot_plugin_livingmemory\livingmemory.db",
+)
+```
+
+只 import 纯函数（`rhythm` / `selfstory` / `selfmodel` / `autonomy`）**不需要 configure** ——
+它们接受 `db_path` 参数，或者自己建库。上面这段只对「状态落盘 / 读别人的库」那几个块是必需的。
+
+---
+
 ## 它现在能干什么
 
 ```bash
@@ -107,24 +131,28 @@ tests/                          68 个测试
 
 ## 带库的模块要先告诉它库在哪
 
-`selfstory` / `selfmodel` / `autonomy` / `school` 都在构造时给路径。
-`growth` 有五个库（autonomy / data_v4 / livingmemory / diary / vitals），用 `configure()` 一次注入：
+`selfstory` / `selfmodel` / `autonomy` / `school` 都在构造时给路径，不用 configure：
 
 ```python
 from dafeiyu import growth, selfstory
 
-growth.configure(
-    plugin_dir=r"D:\where\your\plugin_is",       # 它以此推 autonomy.db 和 diary/
-    data_db=r"D:\AstrBot\data\data_v4.db",       # 人设正文
-    lm_db=r"D:\AstrBot\data\plugin_data\...\livingmemory.db",
-)
-panel = growth.build()      # 九块字典，前端直接用
-
-story = selfstory.SelfStory(r"D:\where\your\plugin_is\autonomy.db")
-story.chapter("今天…")      # 写一章
+panel = growth.build()                             # 九块字典，前端直接用（需先 configure，见文首）
+story = selfstory.SelfStory(r"D:\my-bot\plugin\autonomy.db")
+story.chapter("今天…")                              # 写一章
 ```
 
-**内核不假设自己躺在插件目录里** —— 这是从插件里搬出来时踩到的第一件事：`PLUGIN_DIR = os.path.dirname(__file__)` 在包里指向 `dafeiyu/kernel`，五个库全指错。
+**为什么不能自动猜** —— 这是从插件里搬出来时踩到的第一件事：
+
+```python
+# 在插件里是对的
+PLUGIN_DIR = os.path.dirname(os.path.abspath(__file__))   # → .../data/plugins/astrbot_plugin_live_avatar
+
+# 装成包之后
+PLUGIN_DIR = os.path.dirname(os.path.abspath(__file__))   # → .../site-packages/dafeiyu/kernel
+```
+
+五个库全指错，而且 **`growth.build()` 不会报错，只是每个 block 返回空** —— 面板一片空白，
+比直接崩掉难查得多。所以现在这些常量默认是空串，宁可让宿主显式注入。
 
 ---
 
