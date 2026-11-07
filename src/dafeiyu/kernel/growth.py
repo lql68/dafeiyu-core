@@ -32,13 +32,14 @@ import time
 import datetime
 
 # 这些库的位置由调用方决定 —— 内核不该假设自己躺在插件目录里。
-# 用 configure() 注入；不调就用「本包所在目录」当插件目录（适合把 core
-# 直接放进插件目录、和 main.py 平级的那种用法）。
-PLUGIN_DIR = os.path.dirname(os.path.abspath(__file__))
-AUTO_DB = os.path.join(PLUGIN_DIR, "autonomy.db")
+# 全部默认空串；**必须**由宿主调 configure() 注入，否则每个 block 都返回空。
+# （早先默认值是 dirname(__file__)，装进 venv 后会去 site-packages 里找库，
+#   结果是「面板一片空白但也不报错」—— 比直接报错更难查。）
+PLUGIN_DIR = ""
+AUTO_DB = ""
 DATA_DB = ""
 LM_HINT = ""
-DIARY_DIR = os.path.join(PLUGIN_DIR, "diary")
+DIARY_DIR = ""
 
 
 def configure(plugin_dir=None, auto_db=None, data_db=None, lm_db=None,

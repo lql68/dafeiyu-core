@@ -28,3 +28,5 @@ htmlcov/
 
 # 内核单测跑出来的临时 sqlite
 tmp*
+
+.dafeiyu/

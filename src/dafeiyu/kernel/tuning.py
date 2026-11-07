@@ -10,8 +10,15 @@ from __future__ import annotations
 import json
 import os
 
-_HERE = os.path.dirname(os.path.abspath(__file__))
-_PATH = os.path.join(_HERE, "tuning.json")
+from . import _state
+
+_PATH = _state.path("tuning.json")
+
+
+def set_dir(d: str) -> None:
+    """宿主告诉状态目录变了（由 dafeiyu.kernel.configure 调用）。"""
+    global _PATH
+    _PATH = os.path.join(d, "tuning.json")
 
 # key -> (下限, 上限, 类型, 说明)
 KEYS = {

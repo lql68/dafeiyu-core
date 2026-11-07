@@ -13,6 +13,8 @@
 
 from __future__ import annotations
 
+from . import _state
+
 import json
 import os
 import re
@@ -140,7 +142,7 @@ class School:
         self.store = store              # ProcedureStore 实例
         self.db_path = db_path
         self.state_path = os.path.join(
-            state_dir or os.path.dirname(os.path.abspath(__file__)), "school_state.json")
+            state_dir or _state.state_dir(), "school_state.json")
 
     # ---------------- 每日配额 ----------------
     def _state(self) -> dict:

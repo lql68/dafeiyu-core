@@ -26,8 +26,16 @@ import json
 import os
 import time
 
-_HERE = os.path.dirname(os.path.abspath(__file__))
-_PATH = os.path.join(_HERE, "perm_mode.json")
+from . import _state
+
+_PATH = _state.path("perm_mode.json")
+
+
+def set_dir(d: str) -> None:
+    """宿主告诉状态目录变了（由 dafeiyu.kernel.configure 调用）。"""
+    global _PATH
+    _PATH = os.path.join(d, "perm_mode.json")
+    _CACHE["at"] = 0.0
 
 _CACHE = {"at": 0.0, "mode": "safe"}
 
