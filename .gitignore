@@ -26,7 +26,12 @@ htmlcov/
 *.swp
 .DS_Store
 
-# 内核单测跑出来的临时 sqlite
 tmp*
 
 .dafeiyu/
+
+# pytest 涓存椂鏍癸紙璺戞祴璇曚細寤猴級
+pytest-of-*
+
+# 鏀瑰姩澶囦唤
+*.bak-*

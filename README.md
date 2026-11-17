@@ -93,10 +93,12 @@ python examples/rhythm_demo.py
 
 ---
 
-## 八块
+## 十块
 
 | 模块 | 一句话 | 依赖 |
 |---|---|---|
+| `temporal` | 统一时钟：时区、昼夜七档、离线时长、**中文时间解析**（昨天 / 上周三 / 去年夏天 / 前段时间 / 上个月） | **纯标准库** |
+| `scheduler` | 后台任务预算：最小间隔、每日上限、指数退避、暂停恢复、原子持久化 | json 文件 |
 | `rhythm` | 几点犯困、反应快慢、睡着了没有、睡到第几阶段 | **纯数学**，无 DB |
 | `selfstory` | 自传章节 + 信念 + 证据 + 反证 + 15 天衰减 | sqlite3 |
 | `selfmodel` | 「我现在觉得自己是个什么样的人」，按信念指纹变化重建 | sqlite3 |
@@ -106,12 +108,53 @@ python examples/rhythm_demo.py
 | `school` | 技能学校 —— 从对话里攒「下次该怎么做」 | aiosqlite（可选） |
 | `tuning` | 不改代码调阈值 | json 文件 |
 
-**七块零依赖**，全部标准库（`json / sqlite3 / math / datetime / hashlib / re`）。
+**九块零依赖**，全部标准库（`json / sqlite3 / math / datetime / hashlib / re / zoneinfo`）。
 只有 `school` 真正落库时需要 `aiosqlite`（`pip install dafeiyu-core[asy]`）。
 
 ```bash
-pytest        # 68 passed
+pytest        # 248 passed
 ```
+
+### `temporal` 速览
+
+```python
+from dafeiyu.kernel import temporal as t
+
+t.now()                      # 2026-11-17 20:30:00+08:00（带时区）
+t.now_utc()                  # epoch 秒，持久化用这个
+t.mono()                     # 单调时钟，算耗时用这个（不受系统改时间影响）
+t.band()                     # 早晨 / 上午 / 中午 / 下午 / 傍晚 / 晚上 / 深夜
+t.fmt_gap(3700)              # "1 小时 1 分"
+t.offline(last_active_ts)    # {seconds, text, is_restart, is_long, clock_went_back}
+
+t.parse_cn_time("昨天下午在看书")
+# {'start': 1793..., 'end': 1793..., 'precision': 'exact',
+#  'status': 'past', 'label': '昨天下午', 'source': 'day+band', 'tz': 'Asia/Shanghai'}
+
+t.query_range("上周三我们聊了什么")   # (start_ts, end_ts)；没有时间词返回 (None, None)
+```
+
+**四档精度**：`exact` / `approximate` / `relative` / `unknown`。
+**三档时序**：`past` / `future` / `unknown`（不造 `ongoing`）。
+
+**明确不做的**：纯时段词（「下午」）不默认成今天；「5月30日」未给年份标 `approximate`；
+「小时候」标 `unknown`；时区解析失败就抛 `TzError`，**不猜**。
+
+### `scheduler` 速览
+
+```python
+from dafeiyu.kernel.scheduler import Scheduler
+
+s = Scheduler(root)                      # 状态落 <root>/scheduler_state.json
+if s.allow("proactive", min_gap=0, max_per_day=6):
+    ...                                  # 干活
+    s.done("proactive", ok=True, note="说了一句")
+else:
+    ...                                  # 今天已经说够了 / 在退避期
+```
+
+失败自动指数退避（`60 × 2^(n-1)`，封顶 1 小时），成功清零。
+`s.pause()` / `s.resume()` 全局暂停。**原子写**（`.tmp` → `os.replace`），坏文件不崩。
 
 ---
 
@@ -149,15 +192,17 @@ src/dafeiyu/
 ├── __init__.py
 └── kernel/
     ├── rhythm.py        188 行  生理节律
-    ├── selfstory.py     530 行  自传 + 信念
-    ├── selfmodel.py     145 行  自我模型
-    ├── autonomy.py     1250 行  意图 / 问题池 / 认知 / 观察
-    ├── growth.py        520 行  成长面板聚合
-    ├── perm.py          106 行  五档权限
-    ├── school.py        263 行  技能学校
-    └── tuning.py         84 行  参数覆盖
+    ├── temporal.py     588 行  统一时钟 / 时区 / 昼夜 / 中文时间解析
+    ├── scheduler.py    180 行  后台任务预算 / 退避 / 持久化
+    ├── selfstory.py    530 行  自传 + 信念
+    ├── selfmodel.py    145 行  自我模型
+    ├── autonomy.py    1250 行  意图 / 问题池 / 认知 / 观察
+    ├── growth.py       520 行  成长面板聚合
+    ├── perm.py         106 行  五档权限
+    ├── school.py       263 行  技能学校
+    └── tuning.py        84 行  参数覆盖
 examples/rhythm_demo.py          不用 key 的演示
-tests/                          68 个测试
+tests/                         248 个测试
 ```
 
 ---
